@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
-import { useResumePdf } from '@/hooks/useResumePdf';
-import PdfPage from './pdf-page';
+import { useEffect } from "react";
+import type { PDFDocumentProxy } from "pdfjs-dist";
+import { useResumePdf } from "@/hooks/useResumePdf";
+import 'pdfjs-dist/web/pdf_viewer.css';
 
-type PdfJsModule = typeof import('pdfjs-dist');
+type PdfJsModule = typeof import("pdfjs-dist");
 
-const cMapUrl = '/js/pdfjs-dist/cmaps/';
-const wasmUrl = '/js/pdfjs-dist/wasm/';
-const iccUrl = '/js/pdfjs-dist/iccs/';
-const standardFontDataUrl = '/fonts/pdfjs-dist/';
+const cMapUrl = "/js/pdfjs-dist/cmaps/";
+const wasmUrl = "/js/pdfjs-dist/wasm/";
+const iccUrl = "/js/pdfjs-dist/iccs/";
+const standardFontDataUrl = "/js/standard_fonts/";
 
 export const loadPdfDocumentFromBuffer = async (
   buffer: Uint8Array | ArrayBuffer,
@@ -22,8 +22,7 @@ export const loadPdfDocumentFromBuffer = async (
     wasmUrl,
     iccUrl,
     standardFontDataUrl,
-    disableFontFace: false,
-    disableAutoFetch: true,
+    disableAutoFetch: true, // only fetch the data needed for the displayed pages
     isEvalSupported: false,
     enableXfa: false,
   }).promise;
@@ -31,62 +30,64 @@ export const loadPdfDocumentFromBuffer = async (
 
 export default function PdfViewer() {
   const { data: pdfBuffer } = useResumePdf();
-  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
-  const [pages, setPages] = useState<PDFPageProxy[]>([]);
-  const [scale, setScale] = useState(1.0);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pdfBuffer) return;
 
-    const loadAndPrepare = async () => {
-      try {
-        const PDFJS = await import('pdfjs-dist');
-        PDFJS.GlobalWorkerOptions.workerSrc = '/js/pdfjs-dist/build/pdf.worker.min.mjs';
+    const setupViewer = async () => {
+      const PDFJS = await import("pdfjs-dist");
+      const { PDFViewer, EventBus, PDFLinkService, LinkTarget } = await import(
+        "pdfjs-dist/web/pdf_viewer.mjs"
+      );
 
-        const buffer = new Uint8Array(await pdfBuffer.arrayBuffer());
-        const pdf = await loadPdfDocumentFromBuffer(buffer, PDFJS);
-        setPdfDoc(pdf);
+      PDFJS.GlobalWorkerOptions.workerSrc =
+        "/js/pdfjs-dist/build/pdf.worker.min.mjs";
 
-        const pageList: PDFPageProxy[] = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          pageList.push(page);
-        }
-        setPages(pageList);
-      } catch (err) {
-        setError('Failed to load PDF: ' + (err instanceof Error ? err.message : String(err)));
-      }
+      const buffer = new Uint8Array(await pdfBuffer.arrayBuffer());
+
+      const pdf = await loadPdfDocumentFromBuffer(buffer, PDFJS)
+      console.log("Pdf", pdf)
+ 
+      const eventBus = new EventBus();
+      const linkService = new PDFLinkService({
+        eventBus,
+        externalLinkTarget: LinkTarget.BLANK,
+        externalLinkRel: "noopener",
+      });
+
+      const viewerContainer = document.querySelector(
+        ".pdfjs-viewer"
+      ) as HTMLDivElement;
+
+      const viewer = new PDFViewer({
+        container: viewerContainer,
+        eventBus: eventBus,
+        imageResourcesPath: "/images/pdfjs-dist/",
+        linkService: linkService,
+        annotationMode: PDFJS.AnnotationMode.ENABLE,
+        maxCanvasPixels: 8192 * 8192,
+        annotationEditorMode: PDFJS.AnnotationEditorType.DISABLE,
+      });
+      linkService.setViewer(viewer);
+      linkService.setDocument(pdf);
+      viewer.setDocument(pdf);
     };
 
-    loadAndPrepare();
+    setupViewer();
   }, [pdfBuffer]);
 
-  if (error) return <div className="text-red-500">{error}</div>;
-  if (!pdfDoc || pages.length === 0) return <div>Loading PDF...</div>;
-
   return (
-    <div className="max-w-4xl mx-auto flex flex-col items-center gap-4 pb-20 h-[900px]">
-      <div className="flex gap-6">
-        <button
-          onClick={() => setScale((s) => Math.min(s + 0.2, 3))}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Zoom In
-        </button>
-        <button
-          onClick={() => setScale((s) => Math.max(s - 0.2, 0.5))}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Zoom Out
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-4 w-full items-center border-2 border-blue-700 overflow-hidden">
-        {pages.map((page, index) => (
-          <PdfPage key={index} page={page} scale={scale} />
-        ))}
-      </div>
+    <div
+      className="pdfjs-viewer border-2 border-amber-400"
+      style={{
+        height: "900px",
+        width: "700px",
+        overflow: "auto",
+        position: "absolute",
+        top: 100,
+      }}
+    >
+      <div className="pdfViewer h-full w-full z-50"></div>
     </div>
   );
 }
