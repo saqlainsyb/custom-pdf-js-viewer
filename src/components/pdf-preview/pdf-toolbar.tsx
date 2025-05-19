@@ -1,4 +1,11 @@
 import { useEffect, useState } from "react";
+import {
+  ChevronUp,
+  ChevronDown,
+  ZoomIn,
+  ZoomOut,
+  Download,
+} from "lucide-react";
 
 export default function PdfToolbar({
   currentPage,
@@ -7,6 +14,7 @@ export default function PdfToolbar({
   onPageChange,
   onZoomIn,
   onZoomOut,
+  downloadPdf,
 }: {
   currentPage: number;
   totalPages: number;
@@ -14,6 +22,7 @@ export default function PdfToolbar({
   onPageChange: (page: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  downloadPdf: () => void;
 }) {
   const [inputPage, setInputPage] = useState(currentPage.toString());
 
@@ -28,9 +37,8 @@ export default function PdfToolbar({
     }
   };
 
-  const handlePageEnter= (event: React.KeyboardEvent<HTMLInputElement>) => {
-
-    if (event.key === 'Enter') {
+  const handlePageEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
       let pageNum = Number(inputPage);
       if (isNaN(pageNum) || pageNum < 1) pageNum = 1;
       else if (pageNum > totalPages) pageNum = totalPages;
@@ -40,63 +48,85 @@ export default function PdfToolbar({
   };
 
   return (
-    <div
-      className="fixed top-2 right-2 z-50 flex items-center space-x-2 bg-white border rounded-md p-1 shadow"
-      style={{ minWidth: "180px" }}
-    >
-      {/* Vertical stack of up/down arrow buttons */}
-      <div className="flex space-y-1 items-baseline">
+    <div className="z-50 flex items-center justify-between space-x-2 bg-gray-800 p-1 shadow px-4 text-white">
+      <div className="flex space-x-2">
         <button
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-          className="p-1 hover:bg-gray-200 rounded"
-          aria-label="Previous page"
-          title="Previous page"
+          className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 rounded cursor-pointer font-semibold"
+          aria-label="Recompile"
+          title="Recompile"
         >
-          ▲
+          Recompile
         </button>
         <button
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          className="p-1 hover:bg-gray-200 rounded"
-          aria-label="Next page"
-          title="Next page"
+          onClick={downloadPdf}
+          className="p-1 hover:bg-gray-700 rounded cursor-pointer self-center"
+          aria-label="Download PDF"
+          title="Download PDF"
         >
-          ▼
+          <Download size={16} />
         </button>
       </div>
+      <div className="flex  space-x-2 items-center">
+        <div className="flex">
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            className="p-1 hover:bg-gray-700 cursor-pointer rounded disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            aria-label="Previous page"
+            title="Previous page"
+            disabled={currentPage === 1}
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            className="p-1 hover:bg-gray-700 cursor-pointer rounded disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            aria-label="Next page"
+            title="Next page"
+            disabled={currentPage === totalPages}
+          >
+            <ChevronDown size={16} />
+          </button>
+        </div>
 
-      {/* Page number input and total */}
-      <input
-        type="text"
-        value={inputPage}
-        onChange={handlePageInput}
-        onKeyDown={handlePageEnter}
-        className="w-10 text-center border rounded px-1 py-0.5"
-        aria-label="Current page"
-      />
-      <span className="select-none">/ {totalPages}</span>
+        {/* Page number input and total */}
+        <input
+          type="text"
+          value={inputPage}
+          onChange={handlePageInput}
+          onKeyDown={handlePageEnter}
+          className="w-8 text-center outline-amber-200 bg-amber-50 text-black"
+          aria-label="Current page"
+        />
+        <span className="select-none">/ {totalPages}</span>
 
-      {/* Zoom out */}
-      <button
-        onClick={onZoomOut}
-        className="p-1 hover:bg-gray-200 rounded"
-        aria-label="Zoom out"
-      >
-        −
-      </button>
+        <span className="border-l border-gray-500 h-6 mx-2"></span>
 
-      {/* Zoom in */}
-      <button
-        onClick={onZoomIn}
-        className="p-1 hover:bg-gray-200 rounded"
-        aria-label="Zoom in"
-      >
-        +
-      </button>
+        {/* Zoom out */}
+        <div className="flex">
+          <button
+            onClick={onZoomOut}
+            className="p-1 hover:bg-gray-700 rounded cursor-pointer"
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            <ZoomOut size={16} />
+          </button>
 
-      {/* Zoom percent display */}
-      <span className="select-none w-12 text-right">
-        {Math.round(zoom * 100)}%
-      </span>
+          <button
+            onClick={onZoomIn}
+            className="p-1 hover:bg-gray-700 rounded cursor-pointer"
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            <ZoomIn size={16} />
+          </button>
+        </div>
+
+        {/* Zoom percent display */}
+        <span className="select-none min-w-12 text-center">
+          {Math.round(zoom * 100)}%
+        </span>
+      </div>
     </div>
   );
 }

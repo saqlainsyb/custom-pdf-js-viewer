@@ -153,17 +153,29 @@ export default function PdfViewer() {
     };
   }, [viewer]);
 
-   const handlePageChange = (page: number) => {
+  const handlePageChange = (page: number) => {
     if (viewer) viewer.currentPageNumber = page;
     setCurrentPage(page);
   };
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.25, 4));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.25, 0.25));
-  // const handleResetZoom = () => setZoom(1);
+
+  const downloadPdf = () => {
+    if (!pdfBuffer) return;
+    const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "document.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="relative">
+    <div className="h-screen flex-1/2 grid grid-rows-[50px_1fr]">
       <PdfToolbar
         currentPage={currentPage}
         totalPages={totalPages}
@@ -171,22 +183,25 @@ export default function PdfViewer() {
         onPageChange={handlePageChange}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
+        downloadPdf={downloadPdf}
       />
 
       {/* Viewer Container */}
-      <div
-        className="pdfjs-viewer border-2 border-amber-400 mt-[48px] bg-gray-100"
-        ref={viewerRef}
-        style={{
-          height: "calc(100vh - 48px)",
-          width: "1000px",
-          overflow: "auto",
-          position: "absolute",
-          top: 0,
-          right: 0,
-        }}
-      >
-        <div className="pdfViewer h-full w-full"></div>
+      <div className="relative h-full">
+        <div
+          className="pdfjs-viewer bg-gray-200"
+          ref={viewerRef}
+          style={{
+            height: "100%",
+            width: "100%",
+            overflow: "auto",
+            position: "absolute",
+            top: 0,
+            right: 0,
+          }}
+        >
+          <div className="pdfViewer h-full w-full"></div>
+        </div>
       </div>
     </div>
   );
